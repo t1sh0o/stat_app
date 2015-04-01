@@ -19,7 +19,11 @@
 	<![endif]-->
 </head>
 <body>
+
     <div class="container">
+		@if (Session::has('flash-message'))
+			<div class='alert alert-danger'> {{ Session::get('flash-message') }}</div>
+		@endif
 	    @yield('content')
     </div>
 	<!-- Scripts -->
