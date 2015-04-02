@@ -1,5 +1,7 @@
 <?php namespace App\Providers;
 
+use App\Events\ProfileWasGenerated;
+use App\Handlers\Events\CalculateProfilesRating;
 use Illuminate\Contracts\Events\Dispatcher as DispatcherContract;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -14,6 +16,10 @@ class EventServiceProvider extends ServiceProvider {
 		'event.name' => [
 			'EventListener',
 		],
+
+        ProfileWasGenerated::class => [
+            CalculateProfilesRating::class,
+        ]
 	];
 
 	/**

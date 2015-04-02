@@ -1,37 +1,47 @@
 <?php namespace App\Http\Controllers;
 
+use App\Events\ProfileWasGenerated;
 use App\Http\Requests;
 use App\Http\Controllers\Controller;
 
 use App\Profile;
-use App\Rating;
 use Faker\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 
 class ProfilesController extends Controller {
 
-
-    private $generatedProfiles;
-
+    /**
+     * @var Profile
+     */
     private $profile;
 
-    private $rating;
-
+    /**
+     * @var \Faker\Generator
+     */
     private $faker;
 
+    /**
+     * @var array
+     */
     private $countries = ['Bulgaria', 'Germany', 'France', 'Russia', 'Turkey'];
 
-    function __construct(Profile $profile, Rating $rating, Factory $faker)
+    /**
+     * @param Profile $profile
+     * @param Factory $faker
+     */
+    function __construct(Profile $profile, Factory $faker)
     {
         $this->profile = $profile;
-
-        $this->rating = $rating;
 
         $this->faker = $faker->create();
     }
 
-     public function generate(Request $request)
+    /**
+     * @param Request $request
+     * @return mixed
+     */
+    public function generate(Request $request)
     {
         $count = false === $request->has('count')? 0: $request->get('count');
 
@@ -40,18 +50,45 @@ class ProfilesController extends Controller {
         return Redirect::back()->with('flash-message', "{$count} profiles created");
     }
 
+    /**
+     * @param $email
+     * @return mixed
+     */
+    public function getRating(Request $request)
+    {
+        $email = $request->get('email');
+
+        try {
+            $profile = $this->profile->where('email', $email)->with('ratingRules')->firstOrFail();
+        } 
+        catch (\Exception $e) {
+            return Redirect::back()->with('flash-message', "{$email} not found");
+        }
+
+        return view('profile', compact('profile'));
+    }
+
+    /**
+     * Loops count times and generates profiles
+     *
+     * @param $count
+     */
     private function generateProfiles($count)
     {
         for($i = 0; $i < $count; $i++)
         {
-            $profile = $this->generateProfile();
+            $this->generateProfile();
         }
     }
 
+    /**
+     * Generate and save user in the database
+     *
+     * Fires event ProfileWasGenerated
+     */
     private function generateProfile()
     {
-    
-        $this->profile->create([
+        $profile = $this->profile->create([
             'username' => $this->faker->userName,
             'password' => $this->faker->word,
             'email' => $this->faker->email,
@@ -60,75 +97,10 @@ class ProfilesController extends Controller {
             'country' => $this->faker->randomElement($this->countries),
             'registration_date' => $this->faker->dateTimeBetween('2014-01-01', '2014-12-31'),
             'is_active' => true,
-            'rating' => $this->calculateRating($this->profile)
-        ]);
-        
-
-    }
-
-    private function calculateRating($profile)
-    {
-        $rating = $this->rating->create([
-            'profile_id' => $profile->id? : 0,
-            'country_points' => $this->calculateCountryPoints($profile->country),
-            'id_points' => $this->calculateIdPoints($profile->id),
-            'reg_date_points' => $this->calculateRegDatePoints($profile->registration_date),
-            'stat_decrease_points' => $this->calculateStatDecrasePoints()
+            'rating' => 0,
         ]);
 
-        return  $this->sumPoints($rating);
-    }
-
-    private function sumPoints($rating)
-    {
-        return  $rating['country_points'] + 
-                $rating['id_points'] + 
-                $rating['reg_date_points'] + 
-                $rating['stat_decrease_points'];
-    }
-
-    private function calculateCountryPoints($country)
-    {
-        switch ($country) {
-            case 'Bulgaria':
-                return 2;
-            case 'Germany':
-                return 3;
-            case 'France':
-                return 4;
-            case 'Russia':
-                return 5;
-            case 'Turkey':
-                return 6;
-            default:
-                return 0;
-        }
-    }
-
-
-    private function calculateIdPoints($id)
-    {
-        if ($id % 3 === 0) {
-            return 1;
-        }
-
-        
-        if ($id % 4 === 0) {
-            return 2;
-        }
-
-        return 0;
-    }
-
-    private function calculateRegDatePoints($date)
-    {
-        return 0;
-    }
-
-
-    private function calculateStatDecrasePoints()
-    {
-        return 0;
+        \Event::fire(new ProfileWasGenerated($profile));
     }
 
 }
