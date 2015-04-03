@@ -1,4 +1,3 @@
-<legend>Statistics</legend>
 
 <a href="{!! route('get_quartile_stat') !!}" class="btn btn-primary">Get stats by quartile</a>
 

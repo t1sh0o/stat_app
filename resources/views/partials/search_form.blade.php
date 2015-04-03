@@ -1,7 +1,6 @@
 
 <form action="{{ action('ProfilesController@getRating') }}" method="POST">
     <input type="hidden" name="_token" value="{!! csrf_token() !!}">
-    <legend>Get rating for profile</legend>
 
     <div class="form-group">
         <label for="">Email:</label>
